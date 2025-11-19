@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone VARCHAR(50),
   password VARCHAR(255) NOT NULL,
   role ENUM('patient','doctor','admin') NOT NULL DEFAULT 'patient',
+  profilePhoto VARCHAR(255),
   -- Columns to store password reset token and expiration
   resetToken VARCHAR(255) NULL,
   resetTokenExpiration DATETIME NULL,
@@ -61,15 +62,34 @@ CREATE TABLE IF NOT EXISTS schedules (
 CREATE TABLE IF NOT EXISTS appointments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   doctorId INT NOT NULL,
-  userId INT NOT NULL,
+  userId INT,
   startTime DATETIME NOT NULL,
   endTime DATETIME NOT NULL,
   reason VARCHAR(255),
-  status ENUM('scheduled','completed','cancelled') DEFAULT 'scheduled',
+  status ENUM('scheduled','completed','cancelled','pending_reschedule','pending_emergency','confirmed_emergency','rejected_emergency') DEFAULT 'scheduled',
+  manualPhone VARCHAR(50),
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (doctorId) REFERENCES doctors(id) ON DELETE CASCADE,
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Reschedule requests table: stores patient-initiated reschedule operations awaiting approval
+CREATE TABLE IF NOT EXISTS reschedule_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  appointmentId INT NOT NULL,
+  userId INT NOT NULL,
+  doctorId INT NOT NULL,
+  newStartTime DATETIME NOT NULL,
+  newEndTime DATETIME NOT NULL,
+  status ENUM('pending','approved','rejected') DEFAULT 'pending',
+  decidedByUserId INT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (appointmentId) REFERENCES appointments(id) ON DELETE CASCADE,
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (doctorId) REFERENCES doctors(id) ON DELETE CASCADE,
+  FOREIGN KEY (decidedByUserId) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Insert initial users: one admin, three doctors, and one patient

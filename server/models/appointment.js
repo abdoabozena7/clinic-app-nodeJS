@@ -16,7 +16,7 @@ module.exports = (sequelize) => {
       },
       userId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       startTime: {
         type: DataTypes.DATE,
@@ -31,8 +31,26 @@ module.exports = (sequelize) => {
         allowNull: true,
       },
       status: {
-        type: DataTypes.ENUM('scheduled', 'completed', 'cancelled'),
+        // Appointment status now supports additional states for reschedule and emergency workflows
+        type: DataTypes.ENUM(
+          'scheduled',
+          'completed',
+          'cancelled',
+          // Patient has requested a reschedule but it is not yet approved by doctor/admin
+          'pending_reschedule',
+          // Emergency appointment requested by patient; awaiting approval
+          'pending_emergency',
+          // Emergency appointment approved by doctor/admin
+          'confirmed_emergency',
+          // Emergency appointment was rejected
+          'rejected_emergency'
+        ),
         defaultValue: 'scheduled',
+      },
+      // When manual bookings are created via phone without a registered patient, store the phone number here.
+      manualPhone: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
     },
     {

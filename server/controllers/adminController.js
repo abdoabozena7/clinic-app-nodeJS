@@ -129,16 +129,16 @@ exports.getAllAppointments = async (req, res) => {
 // Manual booking (admin)
 exports.manualBooking = async (req, res) => {
   try {
-    const { doctorId, userId, date, time, reason } = req.body;
-    if (!doctorId || !userId || !date || !time) {
-      return res.status(400).json({ message: 'doctorId, userId, date and time are required.' });
+    const { doctorId, phone, date, time, reason } = req.body;
+    if (!doctorId || !date || !time) {
+      return res.status(400).json({ message: 'doctorId, date and time are required.' });
     }
     const start = moment(`${date} ${time}`, 'YYYY-MM-DD HH:mm');
     if (!start.isValid()) {
       return res.status(400).json({ message: 'Invalid date or time format.' });
     }
     const end = start.clone().add(1, 'hour');
-    // Check schedule
+    // Check doctor's schedule
     const dayOfWeek = start.day();
     const schedules = await Schedule.findAll({ where: { doctorId, dayOfWeek, isBlocked: false } });
     let withinSchedule = false;
@@ -167,9 +167,21 @@ exports.manualBooking = async (req, res) => {
     if (existing) {
       return res.status(400).json({ message: 'Time slot already booked.' });
     }
+    // Determine userId from phone, if provided
+    let userId = null;
+    let manualPhone = null;
+    if (phone) {
+      const user = await User.findOne({ where: { phone, role: 'patient' } });
+      if (user) {
+        userId = user.id;
+      } else {
+        manualPhone = phone;
+      }
+    }
     const appointment = await Appointment.create({
       doctorId,
       userId,
+      manualPhone,
       startTime: start.toDate(),
       endTime: end.toDate(),
       reason: reason || '',
@@ -328,6 +340,40 @@ exports.deletePatient = async (req, res) => {
     }
     await user.destroy();
     return res.json({ message: 'Patient deleted.' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get full list of bookings and basic availability for a given doctor (admin)
+// Returns all appointments and schedules for that doctor so admins can manage bookings.  Does not allow editing schedules.
+exports.getDoctorBookings = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const doctor = await Doctor.findByPk(doctorId, { include: [User] });
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found.' });
+    }
+    // Fetch appointments for this doctor
+    const appointments = await Appointment.findAll({ where: { doctorId }, order: [['startTime', 'ASC']], include: [{ model: User, as: 'User' }] });
+    const apptList = appointments.map((a) => ({
+      id: a.id,
+      patientName: a.User ? a.User.name : a.manualPhone || '',
+      startTime: a.startTime,
+      endTime: a.endTime,
+      status: a.status,
+      reason: a.reason,
+    }));
+    // Fetch schedules (available slots) for this doctor
+    const schedules = await Schedule.findAll({ where: { doctorId, isBlocked: false } });
+    const schedList = schedules.map((s) => ({
+      id: s.id,
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime,
+      endTime: s.endTime,
+    }));
+    return res.json({ doctor: { id: doctor.id, name: doctor.User.name, specialty: doctor.specialty }, appointments: apptList, schedules: schedList });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });

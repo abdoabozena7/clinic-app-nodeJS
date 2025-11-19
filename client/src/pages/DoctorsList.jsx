@@ -100,7 +100,7 @@ export default function DoctorsList() {
           >
             <div className="p-4">
               <img
-                src={doc.imageUrl || 'personal.jpg'}
+                src={doc.imageUrl || 'https://via.placeholder.com/150'}
                 alt={doc.name}
                 className="w-full h-32 object-cover rounded-md mb-2"
               />

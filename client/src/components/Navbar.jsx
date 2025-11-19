@@ -47,7 +47,7 @@ export default function Navbar() {
               </Link>
             </>
           )}
-          {user && user.role === 'patient' && (
+        {user && user.role === 'patient' && (
             <>
               <Link to="/doctors" className="hover:text-gray-200 transition-colors">
                 Doctors
@@ -71,6 +71,9 @@ export default function Navbar() {
               <Link to="/schedule" className="hover:text-gray-200 transition-colors">
                 My Schedule
               </Link>
+              <Link to="/profile" className="hover:text-gray-200 transition-colors">
+                Profile
+              </Link>
               <button onClick={handleLogout} className="hover:text-gray-200 transition-colors">
                 Logout
               </button>
@@ -92,6 +95,9 @@ export default function Navbar() {
               </Link>
               <Link to="/admin/analytics" className="hover:text-gray-200 transition-colors">
                 Analytics
+              </Link>
+              <Link to="/profile" className="hover:text-gray-200 transition-colors">
+                Profile
               </Link>
               <button onClick={handleLogout} className="hover:text-gray-200 transition-colors">
                 Logout
