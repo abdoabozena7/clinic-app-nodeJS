@@ -60,3 +60,55 @@ exports.login = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+// Request a password reset.  Generate a token and set expiration on the user record.
+exports.requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required.' });
+    }
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      // To avoid revealing which emails exist, respond with success anyway.
+      return res.json({ message: 'If an account with that email exists, a reset email has been sent.' });
+    }
+    // Generate a secure random token
+    const crypto = require('crypto');
+    const buffer = crypto.randomBytes(32);
+    const token = buffer.toString('hex');
+    const expiration = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+    user.resetToken = token;
+    user.resetTokenExpiration = expiration;
+    await user.save();
+    // In a real system we would send an email with the reset link containing the token.
+    // For now, just return the token in the response for testing.
+    return res.json({ message: 'Password reset requested.', token });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Reset the user's password using the token.  The request should include token and new password.
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token and newPassword are required.' });
+    }
+    const user = await User.findOne({ where: { resetToken: token } });
+    if (!user || !user.resetTokenExpiration || user.resetTokenExpiration < new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired token.' });
+    }
+    // Set new password and clear reset fields.  Hooks will hash password automatically.
+    user.password = newPassword;
+    user.resetToken = null;
+    user.resetTokenExpiration = null;
+    await user.save();
+    return res.json({ message: 'Password has been reset.' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

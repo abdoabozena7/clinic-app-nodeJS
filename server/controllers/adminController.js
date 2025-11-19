@@ -172,3 +172,80 @@ exports.manualBooking = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+// Get all patients (admin)
+exports.getPatients = async (req, res) => {
+  try {
+    const patients = await User.findAll({ where: { role: 'patient' } });
+    const result = patients.map((user) => ({ id: user.id, name: user.name, email: user.email, phone: user.phone }));
+    return res.json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update a patient (admin) – allows editing name, email, phone, password
+exports.updatePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, password } = req.body;
+    const user = await User.findByPk(id);
+    if (!user || user.role !== 'patient') {
+      return res.status(404).json({ message: 'Patient not found.' });
+    }
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone) user.phone = phone;
+    if (password) user.password = password; // Will be hashed by hook
+    await user.save();
+    return res.json({ message: 'Patient updated.' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete a patient (admin)
+exports.deletePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByPk(id);
+    if (!user || user.role !== 'patient') {
+      return res.status(404).json({ message: 'Patient not found.' });
+    }
+    await user.destroy();
+    return res.json({ message: 'Patient deleted.' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Analytics: returns counts of appointments and cancellation rate and bookings per doctor
+exports.getAnalytics = async (req, res) => {
+  try {
+    // Total appointments
+    const total = await Appointment.count();
+    const completed = await Appointment.count({ where: { status: 'completed' } });
+    const cancelled = await Appointment.count({ where: { status: 'cancelled' } });
+    const scheduled = await Appointment.count({ where: { status: 'scheduled' } });
+    const cancellationRate = total > 0 ? cancelled / total : 0;
+    // Appointments per doctor
+    const appointments = await Appointment.findAll({
+      attributes: ['doctorId', [require('sequelize').fn('COUNT', require('sequelize').col('doctorId')), 'count']],
+      group: ['doctorId'],
+    });
+    // Map doctor IDs to names
+    const doctors = await Doctor.findAll({ include: [User] });
+    const doctorMap = {};
+    doctors.forEach((d) => {
+      doctorMap[d.id] = d.User?.name || `Doctor ${d.id}`;
+    });
+    const perDoctor = appointments.map((row) => ({ doctorId: row.doctorId, doctorName: doctorMap[row.doctorId] || '', count: row.get('count') }));
+    return res.json({ total, scheduled, completed, cancelled, cancellationRate, perDoctor });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

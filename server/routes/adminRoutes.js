@@ -19,4 +19,12 @@ router.get('/appointments', adminController.getAllAppointments);
 // Manual booking
 router.post('/appointments/manual', adminController.manualBooking);
 
+// Patients management
+router.get('/patients', adminController.getPatients);
+router.put('/patients/:id', adminController.updatePatient);
+router.delete('/patients/:id', adminController.deletePatient);
+
+// Analytics
+router.get('/analytics', adminController.getAnalytics);
+
 module.exports = router;

@@ -12,4 +12,8 @@ router.post('/', verifyToken, requireRole(['patient']), appointmentController.cr
 // Cancel appointment (patient)
 router.delete('/:id', verifyToken, appointmentController.cancelAppointment);
 
+// Reschedule or update appointment
+// Allows both patients and admins to modify an appointment
+router.put('/:id', verifyToken, requireRole(['patient', 'admin']), appointmentController.updateAppointment);
+
 module.exports = router;

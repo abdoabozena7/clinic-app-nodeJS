@@ -10,6 +10,10 @@ import PatientDashboard from './pages/PatientDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import NotFound from './pages/NotFound';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import AdminPatients from './pages/AdminPatients';
+import AdminAnalytics from './pages/AdminAnalytics';
 
 // ProtectedRoute component
 const ProtectedRoute = ({ roles, children }) => {
@@ -33,6 +37,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/doctor/:id" element={<DoctorDetail />} />
             <Route
               path="/dashboard"
@@ -47,6 +53,22 @@ export default function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/patients"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminPatients />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminAnalytics />
                 </ProtectedRoute>
               }
             />

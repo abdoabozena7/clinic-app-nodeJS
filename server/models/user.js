@@ -45,6 +45,16 @@ module.exports = (sequelize) => {
         type: DataTypes.ENUM('patient', 'doctor', 'admin'),
         defaultValue: 'patient',
       },
+      // Password reset token for "forgot password" functionality.  When a user requests
+      // a password reset, we generate a random token and set an expiration time.
+      resetToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      resetTokenExpiration: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
     },
     {
       sequelize,

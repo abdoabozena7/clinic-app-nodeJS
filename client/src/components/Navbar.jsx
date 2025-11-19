@@ -57,6 +57,12 @@ export default function Navbar() {
               <Link to="/admin" className="hover:text-gray-200 transition-colors">
                 Admin
               </Link>
+              <Link to="/admin/patients" className="hover:text-gray-200 transition-colors">
+                Patients
+              </Link>
+              <Link to="/admin/analytics" className="hover:text-gray-200 transition-colors">
+                Analytics
+              </Link>
               <button onClick={handleLogout} className="hover:text-gray-200 transition-colors">
                 Logout
               </button>

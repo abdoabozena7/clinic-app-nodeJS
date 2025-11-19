@@ -122,3 +122,78 @@ exports.cancelAppointment = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+// Update/reschedule an appointment
+// Patients can reschedule their own future appointments (>24h before start), and admins can reschedule any.
+exports.updateAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, time } = req.body;
+    if (!date || !time) {
+      return res.status(400).json({ message: 'date and time are required.' });
+    }
+    const appointment = await Appointment.findByPk(id);
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found.' });
+    }
+    const userId = req.user.id;
+    const role = req.user.role;
+    // Only the appointment owner or admin can reschedule
+    if (role === 'patient' && appointment.userId !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to reschedule this appointment.' });
+    }
+    const newStart = moment(`${date} ${time}`, 'YYYY-MM-DD HH:mm');
+    if (!newStart.isValid()) {
+      return res.status(400).json({ message: 'Invalid date or time format.' });
+    }
+    const newEnd = newStart.clone().add(1, 'hour');
+    // If patient, ensure the appointment is >24h away from now
+    if (role === 'patient') {
+      const now = moment();
+      const diff = moment(appointment.startTime).diff(now, 'hours');
+      if (diff < 24) {
+        return res.status(400).json({ message: 'Cannot reschedule within 24 hours of appointment time.' });
+      }
+    }
+    // Ensure the new slot is within doctor's working hours
+    const doctorId = appointment.doctorId;
+    const dayOfWeek = newStart.day();
+    const schedules = await Schedule.findAll({ where: { doctorId, dayOfWeek, isBlocked: false } });
+    let withinSchedule = false;
+    for (const sched of schedules) {
+      const schedStart = moment(`${date} ${sched.startTime}`, 'YYYY-MM-DD HH:mm:ss');
+      const schedEnd = moment(`${date} ${sched.endTime}`, 'YYYY-MM-DD HH:mm:ss');
+      if (newStart.isSameOrAfter(schedStart) && newEnd.isSameOrBefore(schedEnd)) {
+        withinSchedule = true;
+        break;
+      }
+    }
+    if (!withinSchedule) {
+      return res.status(400).json({ message: 'Selected time is outside of doctor working hours.' });
+    }
+    // Check for overlapping appointments (excluding this appointment)
+    const existing = await Appointment.findOne({
+      where: {
+        id: { [Op.ne]: id },
+        doctorId,
+        status: 'scheduled',
+        [Op.and]: [
+          { startTime: { [Op.lt]: newEnd.toDate() } },
+          { endTime: { [Op.gt]: newStart.toDate() } },
+        ],
+      },
+    });
+    if (existing) {
+      return res.status(400).json({ message: 'New time slot overlaps with an existing appointment.' });
+    }
+    // Update the appointment
+    appointment.startTime = newStart.toDate();
+    appointment.endTime = newEnd.toDate();
+    appointment.status = 'scheduled';
+    await appointment.save();
+    return res.json({ message: 'Appointment rescheduled.', appointment });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
