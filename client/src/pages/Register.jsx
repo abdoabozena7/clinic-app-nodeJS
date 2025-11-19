@@ -19,6 +19,10 @@ export default function Register() {
       setError('Passwords do not match');
       return;
     }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
     try {
       await api.post('/auth/register', { name, email, phone, password });
       setMessage('Registration successful! Redirecting to login...');

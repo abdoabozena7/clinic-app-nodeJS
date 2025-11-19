@@ -1,11 +1,11 @@
-const { User, Doctor, Schedule, Appointment } = require('../models');
+const { User, Doctor, Schedule, Appointment, Notification } = require('../models');
 const moment = require('moment');
 const { Op } = require('sequelize');
 
 // Create a new doctor (admin only)
 exports.createDoctor = async (req, res) => {
   try {
-    const { name, email, phone, password, specialty, bio, imageUrl } = req.body;
+    const { name, email, phone, password, specialty, bio, imageUrl, location, price } = req.body;
     if (!name || !email || !password || !specialty) {
       return res.status(400).json({ message: 'Name, email, password and specialty are required.' });
     }
@@ -14,7 +14,14 @@ exports.createDoctor = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email.' });
     }
     const user = await User.create({ name, email, phone, password, role: 'doctor' });
-    const doctor = await Doctor.create({ userId: user.id, specialty, bio: bio || '', imageUrl: imageUrl || '' });
+    const doctor = await Doctor.create({
+      userId: user.id,
+      specialty,
+      bio: bio || '',
+      imageUrl: imageUrl || '',
+      location: location || '',
+      price: price || null,
+    });
     return res.status(201).json({ message: 'Doctor created successfully.', doctorId: doctor.id });
   } catch (error) {
     console.error(error);
@@ -26,7 +33,7 @@ exports.createDoctor = async (req, res) => {
 exports.updateDoctor = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, password, specialty, bio, imageUrl } = req.body;
+    const { name, email, phone, password, specialty, bio, imageUrl, location, price } = req.body;
     const doctor = await Doctor.findByPk(id, { include: [User] });
     if (!doctor) return res.status(404).json({ message: 'Doctor not found.' });
     const user = doctor.User;
@@ -38,8 +45,10 @@ exports.updateDoctor = async (req, res) => {
     await user.save();
     // Update doctor details
     if (specialty) doctor.specialty = specialty;
-    if (bio) doctor.bio = bio;
-    if (imageUrl) doctor.imageUrl = imageUrl;
+    if (bio !== undefined) doctor.bio = bio;
+    if (imageUrl !== undefined) doctor.imageUrl = imageUrl;
+    if (location !== undefined) doctor.location = location;
+    if (price !== undefined) doctor.price = price;
     await doctor.save();
     return res.json({ message: 'Doctor updated.' });
   } catch (error) {
@@ -167,6 +176,109 @@ exports.manualBooking = async (req, res) => {
       status: 'scheduled',
     });
     return res.status(201).json({ message: 'Appointment booked manually.', appointment });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Admin updates/reschedules an appointment.  Accepts date and time in body.
+exports.updateAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, time } = req.body;
+    if (!date || !time) {
+      return res.status(400).json({ message: 'date and time are required.' });
+    }
+    const appointment = await Appointment.findByPk(id);
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found.' });
+    }
+    const start = moment(`${date} ${time}`, 'YYYY-MM-DD HH:mm');
+    if (!start.isValid()) {
+      return res.status(400).json({ message: 'Invalid date or time format.' });
+    }
+    const end = start.clone().add(1, 'hour');
+    const doctorId = appointment.doctorId;
+    const dayOfWeek = start.day();
+    // Validate schedule
+    const schedules = await Schedule.findAll({ where: { doctorId, dayOfWeek, isBlocked: false } });
+    let withinSchedule = false;
+    for (const sched of schedules) {
+      const schedStart = moment(`${date} ${sched.startTime}`, 'YYYY-MM-DD HH:mm:ss');
+      const schedEnd = moment(`${date} ${sched.endTime}`, 'YYYY-MM-DD HH:mm:ss');
+      if (start.isSameOrAfter(schedStart) && end.isSameOrBefore(schedEnd)) {
+        withinSchedule = true;
+        break;
+      }
+    }
+    if (!withinSchedule) {
+      return res.status(400).json({ message: 'Selected time is outside of doctor working hours.' });
+    }
+    // Check overlap with other appointments (excluding current)
+    const existing = await Appointment.findOne({
+      where: {
+        id: { [Op.ne]: id },
+        doctorId,
+        status: 'scheduled',
+        [Op.and]: [
+          { startTime: { [Op.lt]: end.toDate() } },
+          { endTime: { [Op.gt]: start.toDate() } },
+        ],
+      },
+    });
+    if (existing) {
+      return res.status(400).json({ message: 'Time slot already booked.' });
+    }
+    appointment.startTime = start.toDate();
+    appointment.endTime = end.toDate();
+    appointment.status = 'scheduled';
+    await appointment.save();
+    // Send notifications
+    try {
+      const when = start.format('YYYY-MM-DD HH:mm');
+      const patientId = appointment.userId;
+      const doctor = await Doctor.findByPk(doctorId, { include: [User] });
+      await Notification.create({ userId: patientId, message: `Your appointment has been rescheduled to ${when}.` });
+      if (doctor && doctor.User) {
+        await Notification.create({ userId: doctor.User.id, message: `Appointment with patient #${patientId} has been rescheduled to ${when}.` });
+      }
+      const admins = await User.findAll({ where: { role: 'admin' } });
+      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Appointment rescheduled: doctor #${doctorId}, patient #${patientId}, ${when}.` })));
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
+    return res.json({ message: 'Appointment updated.', appointment });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Admin deletes/cancels an appointment entirely
+exports.deleteAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appointment = await Appointment.findByPk(id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+    // Cancel the appointment; we mark status and delete record.
+    appointment.status = 'cancelled';
+    await appointment.save();
+    // Send notifications
+    try {
+      const patientId = appointment.userId;
+      const doctorId = appointment.doctorId;
+      const doctor = await Doctor.findByPk(doctorId, { include: [User] });
+      await Notification.create({ userId: patientId, message: 'Your appointment has been cancelled by admin.' });
+      if (doctor && doctor.User) {
+        await Notification.create({ userId: doctor.User.id, message: 'An appointment was cancelled by admin.' });
+      }
+      const admins = await User.findAll({ where: { role: 'admin' } });
+      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Appointment cancelled: doctor #${doctorId}, patient #${patientId}.` })));
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
+    return res.json({ message: 'Appointment cancelled.' });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });

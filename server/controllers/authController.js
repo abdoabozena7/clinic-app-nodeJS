@@ -112,3 +112,34 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+// Update profile for currently authenticated user.  Allows changing
+// name, email, phone, and optionally password.  If email is changed,
+// ensure it isn't already taken by another user.  Password will be
+// hashed automatically by model hooks.
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body;
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+    // If updating email, ensure it is not taken by another user
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ where: { email } });
+      if (existing && existing.id !== userId) {
+        return res.status(400).json({ message: 'Email already in use.' });
+      }
+      user.email = email;
+    }
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (password) user.password = password;
+    await user.save();
+    return res.json({ message: 'Profile updated successfully', user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role } });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

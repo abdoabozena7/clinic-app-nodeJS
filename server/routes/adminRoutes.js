@@ -19,6 +19,11 @@ router.get('/appointments', adminController.getAllAppointments);
 // Manual booking
 router.post('/appointments/manual', adminController.manualBooking);
 
+// Modify an appointment (e.g. reschedule or change status)
+router.put('/appointments/:id', adminController.updateAppointment);
+// Delete/cancel an appointment
+router.delete('/appointments/:id', adminController.deleteAppointment);
+
 // Patients management
 router.get('/patients', adminController.getPatients);
 router.put('/patients/:id', adminController.updatePatient);

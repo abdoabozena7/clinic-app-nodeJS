@@ -26,6 +26,15 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      location: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      price: {
+        // Consultation price
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+      },
     },
     {
       sequelize,

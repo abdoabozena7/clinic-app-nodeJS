@@ -1,4 +1,4 @@
-const { Appointment, Schedule, Doctor, User } = require('../models');
+const { Appointment, Schedule, Doctor, User, Notification } = require('../models');
 const moment = require('moment');
 const { Op } = require('sequelize');
 
@@ -53,6 +53,22 @@ exports.createAppointment = async (req, res) => {
       reason: reason || '',
       status: 'scheduled',
     });
+    // Create notifications: to patient, doctor, admin
+    try {
+      const patientMessage = `Your appointment with doctor #${doctorId} on ${start.format('YYYY-MM-DD HH:mm')} is confirmed.`;
+      await Notification.create({ userId, message: patientMessage });
+      // Doctor notification
+      const doctor = await Doctor.findByPk(doctorId, { include: [User] });
+      if (doctor && doctor.User) {
+        await Notification.create({ userId: doctor.User.id, message: `New appointment booked by patient #${userId} for ${start.format('YYYY-MM-DD HH:mm')}.` });
+      }
+      // Admin notifications
+      const admins = await User.findAll({ where: { role: 'admin' } });
+      const adminMessage = `Appointment booked: doctor #${doctorId}, patient #${userId}, ${start.format('YYYY-MM-DD HH:mm')}.`;
+      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: adminMessage })));
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
     return res.status(201).json({ message: 'Appointment booked successfully.', appointment });
   } catch (error) {
     console.error(error);
@@ -116,6 +132,21 @@ exports.cancelAppointment = async (req, res) => {
     }
     appointment.status = 'cancelled';
     await appointment.save();
+    // Send notifications
+    try {
+      // notify patient and doctor and admins
+      const patientId = appointment.userId;
+      const doctor = await Doctor.findByPk(appointment.doctorId, { include: [User] });
+      const when = moment(appointment.startTime).format('YYYY-MM-DD HH:mm');
+      await Notification.create({ userId: patientId, message: `Your appointment on ${when} was cancelled.` });
+      if (doctor && doctor.User) {
+        await Notification.create({ userId: doctor.User.id, message: `Appointment with patient #${patientId} on ${when} was cancelled.` });
+      }
+      const admins = await User.findAll({ where: { role: 'admin' } });
+      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Appointment cancelled: doctor #${appointment.doctorId}, patient #${patientId}, ${when}.` })));
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
     return res.json({ message: 'Appointment cancelled.' });
   } catch (error) {
     console.error(error);
@@ -191,6 +222,20 @@ exports.updateAppointment = async (req, res) => {
     appointment.endTime = newEnd.toDate();
     appointment.status = 'scheduled';
     await appointment.save();
+    // Send notifications
+    try {
+      const when = newStart.format('YYYY-MM-DD HH:mm');
+      const patientId = appointment.userId;
+      const doctor = await Doctor.findByPk(doctorId, { include: [User] });
+      await Notification.create({ userId: patientId, message: `Your appointment has been rescheduled to ${when}.` });
+      if (doctor && doctor.User) {
+        await Notification.create({ userId: doctor.User.id, message: `Appointment with patient #${patientId} has been rescheduled to ${when}.` });
+      }
+      const admins = await User.findAll({ where: { role: 'admin' } });
+      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Appointment rescheduled: doctor #${doctorId}, patient #${patientId}, ${when}.` })));
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
     return res.json({ message: 'Appointment rescheduled.', appointment });
   } catch (error) {
     console.error(error);

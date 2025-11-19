@@ -12,15 +12,26 @@ exports.getDoctors = async (req, res) => {
         },
       ],
     });
-    const formatted = doctors.map((doc) => ({
-      id: doc.id,
-      name: doc.User.name,
-      email: doc.User.email,
-      phone: doc.User.phone,
-      specialty: doc.specialty,
-      bio: doc.bio,
-      imageUrl: doc.imageUrl,
-    }));
+    // For each doctor compute availability today (if schedule exists for today)
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const formatted = [];
+    for (const doc of doctors) {
+      const schedules = await Schedule.findAll({ where: { doctorId: doc.id, dayOfWeek, isBlocked: false } });
+      const availableToday = schedules.length > 0;
+      formatted.push({
+        id: doc.id,
+        name: doc.User.name,
+        email: doc.User.email,
+        phone: doc.User.phone,
+        specialty: doc.specialty,
+        bio: doc.bio,
+        imageUrl: doc.imageUrl,
+        location: doc.location,
+        price: doc.price,
+        availableToday,
+      });
+    }
     return res.json(formatted);
   } catch (error) {
     console.error(error);
@@ -49,6 +60,8 @@ exports.getDoctorById = async (req, res) => {
       specialty: doctor.specialty,
       bio: doctor.bio,
       imageUrl: doctor.imageUrl,
+      location: doctor.location,
+      price: doctor.price,
     };
     return res.json(result);
   } catch (error) {
@@ -150,6 +163,64 @@ exports.getDoctorAppointments = async (req, res) => {
       reason: appt.reason,
     }));
     return res.json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get schedules for a specific doctor
+exports.getDoctorSchedules = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Ensure requesting doctor is only accessing their own schedules unless admin
+    const { user } = req;
+    if (user.role === 'doctor' && user.id !== parseInt(id, 10)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const schedules = await Schedule.findAll({ where: { doctorId: id }, order: [['dayOfWeek', 'ASC'], ['startTime', 'ASC']] });
+    return res.json(schedules);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Add a schedule entry for a doctor.  The request must include dayOfWeek (0–6), startTime, endTime.
+exports.addDoctorSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dayOfWeek, startTime, endTime, isBlocked } = req.body;
+    // Validate inputs
+    if (dayOfWeek === undefined || !startTime || !endTime) {
+      return res.status(400).json({ message: 'dayOfWeek, startTime and endTime are required.' });
+    }
+    // Ensure user is doctor and matches id or is admin
+    const { user } = req;
+    if (user.role === 'doctor' && user.id !== parseInt(id, 10)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const schedule = await Schedule.create({ doctorId: id, dayOfWeek, startTime, endTime, isBlocked: !!isBlocked });
+    return res.status(201).json(schedule);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete a schedule entry.  Doctors can only delete their own schedules.
+exports.deleteDoctorSchedule = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const { user } = req;
+    const schedule = await Schedule.findByPk(scheduleId);
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found.' });
+    // If doctor, ensure ownership
+    if (user.role === 'doctor' && schedule.doctorId !== user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    await schedule.destroy();
+    return res.json({ message: 'Schedule deleted.' });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
