@@ -113,65 +113,6 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-/**
- * Upload a new profile photo for the authenticated user.  Expects middleware to have
- * attached `req.file` with information about the uploaded file.  The file is stored
- * on disk and the path is saved in the user's record.  Returns the new profile
- * photo URL in the response.
- */
-exports.uploadProfilePhoto = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No photo uploaded.' });
-    }
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-    // Store the relative path to the uploaded photo.  The client can build the full URL.
-    user.profilePhoto = `/uploads/profile_photos/${req.file.filename}`;
-    await user.save();
-    return res.json({ message: 'Profile photo updated successfully', profilePhoto: user.profilePhoto });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
-/**
- * Change password for the authenticated user.  Requires currentPassword, newPassword, and confirmPassword.
- * Ensures that the current password matches, the new password meets minimum length, and the
- * confirmation matches.  Password will be hashed automatically via model hooks.
- */
-exports.changePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      return res.status(400).json({ message: 'Current, new and confirm password are required.' });
-    }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
-    }
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ message: 'New password and confirmation do not match.' });
-    }
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-    const valid = await user.checkPassword(currentPassword);
-    if (!valid) {
-      return res.status(401).json({ message: 'Current password is incorrect.' });
-    }
-    user.password = newPassword;
-    await user.save();
-    return res.json({ message: 'Password updated successfully' });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
 // Update profile for currently authenticated user.  Allows changing
 // name, email, phone, and optionally password.  If email is changed,
 // ensure it isn't already taken by another user.  Password will be
@@ -194,10 +135,7 @@ exports.updateProfile = async (req, res) => {
     }
     if (name) user.name = name;
     if (phone) user.phone = phone;
-    // Do not allow password update via this route.  Use changePassword endpoint instead.
-    if (password) {
-      return res.status(400).json({ message: 'Password changes are not allowed via this endpoint. Use /profile/password.' });
-    }
+    if (password) user.password = password;
     await user.save();
     return res.json({ message: 'Profile updated successfully', user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role } });
   } catch (error) {

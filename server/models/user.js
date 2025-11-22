@@ -45,11 +45,6 @@ module.exports = (sequelize) => {
         type: DataTypes.ENUM('patient', 'doctor', 'admin'),
         defaultValue: 'patient',
       },
-      // Path or URL to the user's profile photo.  Stored in the database as a string.
-      profilePhoto: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
       // Password reset token for "forgot password" functionality.  When a user requests
       // a password reset, we generate a random token and set an expiration time.
       resetToken: {

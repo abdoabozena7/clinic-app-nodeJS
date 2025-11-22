@@ -1,4 +1,4 @@
-const { Appointment, Schedule, Doctor, User, Notification, RescheduleRequest } = require('../models');
+const { Appointment, Schedule, Doctor, User, Notification } = require('../models');
 const moment = require('moment');
 const { Op } = require('sequelize');
 
@@ -154,59 +154,6 @@ exports.cancelAppointment = async (req, res) => {
   }
 };
 
-// Mark appointment as completed (doctor or admin)
-// Doctors can mark their own appointments as completed. Admins can mark any appointment.
-exports.completeAppointment = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    const role = req.user.role;
-    const appointment = await Appointment.findByPk(id);
-    if (!appointment) {
-      return res.status(404).json({ message: 'Appointment not found.' });
-    }
-    // Only doctors or admins can mark complete
-    if (role === 'doctor') {
-      // Ensure the appointment belongs to this doctor
-      const doctor = await Doctor.findOne({ where: { userId } });
-      if (!doctor || doctor.id !== appointment.doctorId) {
-        return res.status(403).json({ message: 'You are not authorized to complete this appointment.' });
-      }
-    } else if (role !== 'admin') {
-      return res.status(403).json({ message: 'You are not authorized to complete this appointment.' });
-    }
-    // Set status to completed
-    appointment.status = 'completed';
-    await appointment.save();
-    // Send notifications with doctor and patient names
-    try {
-      const doctor = await Doctor.findByPk(appointment.doctorId, { include: [User] });
-      const patient = appointment.userId ? await User.findByPk(appointment.userId) : null;
-      const doctorName = doctor && doctor.User ? `${doctor.User.name}` : `Doctor #${appointment.doctorId}`;
-      const patientName = patient ? `${patient.name}` : appointment.manualPhone ? appointment.manualPhone : `Patient #${appointment.userId}`;
-      const when = moment(appointment.startTime).format('YYYY-MM-DD HH:mm');
-      // Notify patient if exists
-      if (patient) {
-        await Notification.create({ userId: patient.id, message: `${doctorName} marked your appointment on ${when} as completed.` });
-      }
-      // Notify doctor
-      if (doctor && doctor.User) {
-        await Notification.create({ userId: doctor.User.id, message: `You marked appointment with ${patientName} on ${when} as completed.` });
-      }
-      // Notify admins
-      const admins = await User.findAll({ where: { role: 'admin' } });
-      const adminMessage = `${doctorName} completed appointment with ${patientName} on ${when}.`;
-      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: adminMessage })));
-    } catch (notifyErr) {
-      console.error('Notification error:', notifyErr);
-    }
-    return res.json({ message: 'Appointment marked as completed.' });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
 // Update/reschedule an appointment
 // Patients can reschedule their own future appointments (>24h before start), and admins can reschedule any.
 exports.updateAppointment = async (req, res) => {
@@ -270,35 +217,7 @@ exports.updateAppointment = async (req, res) => {
     if (existing) {
       return res.status(400).json({ message: 'New time slot overlaps with an existing appointment.' });
     }
-    // If a patient is rescheduling, create a reschedule request instead of updating immediately
-    if (role === 'patient') {
-      // Create a reschedule request and mark appointment as pending
-      const requestRecord = await RescheduleRequest.create({
-        appointmentId: appointment.id,
-        userId: userId,
-        doctorId: doctorId,
-        newStartTime: newStart.toDate(),
-        newEndTime: newEnd.toDate(),
-        status: 'pending',
-      });
-      appointment.status = 'pending_reschedule';
-      await appointment.save();
-      // Notify doctor and admins
-      try {
-        const whenStr = newStart.format('YYYY-MM-DD HH:mm');
-        const patientName = (await User.findByPk(userId)).name;
-        const doctor = await Doctor.findByPk(doctorId, { include: [User] });
-        if (doctor && doctor.User) {
-          await Notification.create({ userId: doctor.User.id, message: `${patientName} requested to reschedule appointment ${appointment.id} to ${whenStr}.` });
-        }
-        const admins = await User.findAll({ where: { role: 'admin' } });
-        await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Patient ${patientName} requested reschedule for appointment ${appointment.id} to ${whenStr}.` })));
-      } catch (notifyErr) {
-        console.error('Notification error:', notifyErr);
-      }
-      return res.json({ message: 'Reschedule request submitted and pending approval.' });
-    }
-    // For doctors and admins: update the appointment immediately
+    // Update the appointment
     appointment.startTime = newStart.toDate();
     appointment.endTime = newEnd.toDate();
     appointment.status = 'scheduled';
@@ -307,17 +226,13 @@ exports.updateAppointment = async (req, res) => {
     try {
       const when = newStart.format('YYYY-MM-DD HH:mm');
       const patientId = appointment.userId;
-      const patient = await User.findByPk(patientId);
       const doctor = await Doctor.findByPk(doctorId, { include: [User] });
-      // Notify patient
-      await Notification.create({ userId: patientId, message: `Your appointment has been rescheduled to ${when} by ${role}.` });
-      // Notify doctor
+      await Notification.create({ userId: patientId, message: `Your appointment has been rescheduled to ${when}.` });
       if (doctor && doctor.User) {
-        await Notification.create({ userId: doctor.User.id, message: `Appointment with patient ${patient?.name} has been rescheduled to ${when}.` });
+        await Notification.create({ userId: doctor.User.id, message: `Appointment with patient #${patientId} has been rescheduled to ${when}.` });
       }
-      // Notify admins
       const admins = await User.findAll({ where: { role: 'admin' } });
-      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Appointment rescheduled by ${role}: doctor #${doctorId}, patient #${patientId}, ${when}.` })));
+      await Notification.bulkCreate(admins.map((a) => ({ userId: a.id, message: `Appointment rescheduled: doctor #${doctorId}, patient #${patientId}, ${when}.` })));
     } catch (notifyErr) {
       console.error('Notification error:', notifyErr);
     }

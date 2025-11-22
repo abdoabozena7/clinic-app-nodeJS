@@ -9,14 +9,11 @@ router.get('/', verifyToken, requireRole(['patient']), appointmentController.get
 // Book appointment (patient)
 router.post('/', verifyToken, requireRole(['patient']), appointmentController.createAppointment);
 
-// Cancel appointment: patients can cancel their own appointment (>24h). Doctors can cancel their own appointments. Admins can cancel any.
+// Cancel appointment (patient)
 router.delete('/:id', verifyToken, appointmentController.cancelAppointment);
 
 // Reschedule or update appointment
-// Patients can request reschedule; doctors and admins can reschedule immediately
-router.put('/:id', verifyToken, requireRole(['patient', 'doctor', 'admin']), appointmentController.updateAppointment);
-
-// Mark an appointment as completed (doctor or admin)
-router.put('/:id/complete', verifyToken, requireRole(['doctor', 'admin']), appointmentController.completeAppointment);
+// Allows both patients and admins to modify an appointment
+router.put('/:id', verifyToken, requireRole(['patient', 'admin']), appointmentController.updateAppointment);
 
 module.exports = router;

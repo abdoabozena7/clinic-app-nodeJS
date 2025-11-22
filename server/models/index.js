@@ -6,7 +6,6 @@ const ScheduleModel = require('./schedule');
 const AppointmentModel = require('./appointment');
 const NotificationModel = require('./notification');
 const EmergencyRequestModel = require('./emergencyRequest');
-const RescheduleRequestModel = require('./rescheduleRequest');
 
 // Initialize models
 const User = UserModel(sequelize);
@@ -15,7 +14,6 @@ const Schedule = ScheduleModel(sequelize);
 const Appointment = AppointmentModel(sequelize);
 const Notification = NotificationModel(sequelize);
 const EmergencyRequest = EmergencyRequestModel(sequelize);
-const RescheduleRequest = RescheduleRequestModel(sequelize);
 
 // Define associations
 // A user can have a doctor profile (if role === doctor)
@@ -44,17 +42,6 @@ EmergencyRequest.belongsTo(User, { foreignKey: 'userId' });
 Doctor.hasMany(EmergencyRequest, { foreignKey: 'doctorId', onDelete: 'CASCADE' });
 EmergencyRequest.belongsTo(Doctor, { foreignKey: 'doctorId' });
 
-// Reschedule requests associations
-// An appointment may have many reschedule requests over its lifetime
-Appointment.hasMany(RescheduleRequest, { foreignKey: 'appointmentId', onDelete: 'CASCADE' });
-RescheduleRequest.belongsTo(Appointment, { foreignKey: 'appointmentId' });
-// A user (patient) can create many reschedule requests
-User.hasMany(RescheduleRequest, { foreignKey: 'userId', onDelete: 'CASCADE' });
-RescheduleRequest.belongsTo(User, { foreignKey: 'userId' });
-// A doctor receives reschedule requests for their appointments
-Doctor.hasMany(RescheduleRequest, { foreignKey: 'doctorId', onDelete: 'CASCADE' });
-RescheduleRequest.belongsTo(Doctor, { foreignKey: 'doctorId' });
-
 module.exports = {
   sequelize,
   User,
@@ -63,5 +50,4 @@ module.exports = {
   Appointment,
   Notification,
   EmergencyRequest,
-  RescheduleRequest,
 };
