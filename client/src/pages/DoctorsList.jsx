@@ -118,31 +118,32 @@ export default function DoctorsList() {
             transition={{ duration: 0.4 }}
             className="bg-white rounded-2xl shadow-md p-6 text-center hover:shadow-xl transition-shadow flex flex-col items-center"
           >
-            <img
-              src={doctorImages[doc.id % doctorImages.length]}
-              alt={doc.name}
-              className="w-32 h-32 object-cover rounded-full border-4 border-blue-500 shadow-md mb-4"
-            />
-
-            <h2 className="text-xl font-semibold mb-1">{doc.name}</h2>
-            <p className="text-sm text-gray-600 mb-1">{doc.specialty}</p>
-            <p className="text-sm text-gray-600 mb-1">Location: {doc.location || 'N/A'}</p>
-            <p className="text-sm text-gray-600 mb-2">Consultation fee: ${doc.price || 'N/A'}</p>
-
-            <p className="text-sm mb-4">
-              {doc.availableToday ? (
-                <span className="text-green-600 font-semibold">Available today</span>
-              ) : (
-                <span className="text-gray-500">No slots today</span>
-              )}
-            </p>
-
-            <Link
-              to={`/doctor/${doc.id}`}
-              className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors"
-            >
-              View Profile
-            </Link>
+            <div className="p-4">
+              <img
+                src={doc.imageUrl || 'https://via.placeholder.com/150'}
+                alt={doc.name}
+                className="w-full h-32 object-cover rounded-md mb-2"
+              />
+              <h2 className="text-xl font-semibold mb-1">{doc.name}</h2>
+              <p className="text-sm text-gray-600 mb-1">{doc.specialty}</p>
+              <p className="text-sm text-gray-600 mb-1">Location: {doc.location || 'N/A'}</p>
+              <p className="text-sm text-gray-600 mb-2">Consultation fee: ${doc.price || 'N/A'}</p>
+              <p className="text-sm mb-2">
+                {doc.availableToday ? (
+                  <span className="text-green-600 font-semibold">Available today</span>
+                ) : (
+                  <span className="text-gray-500">No slots today</span>
+                )}
+              </p>
+              <div className="flex justify-between items-center">
+                <Link
+                  to={`/doctor/${doc.id}`}
+                  className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                >
+                  View Profile
+                </Link>
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>

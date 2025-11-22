@@ -32,4 +32,7 @@ router.delete('/patients/:id', adminController.deletePatient);
 // Analytics
 router.get('/analytics', adminController.getAnalytics);
 
+// Get bookings and schedules for a specific doctor
+router.get('/doctors/:doctorId/bookings', adminController.getDoctorBookings);
+
 module.exports = router;
