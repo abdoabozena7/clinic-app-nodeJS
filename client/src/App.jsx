@@ -15,6 +15,7 @@ import Register from "./pages/Register";
 import PatientDashboard from "./pages/PatientDashboard";
 import PatientAppointments from "./pages/PatientAppointments";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import DoctorSchedule from "./pages/DoctorSchedule"; // ✅ جديد
 import AdminDashboard from "./pages/AdminDashboard";
 
 import AdminDoctors from "./pages/AdminDoctors";
@@ -51,13 +52,13 @@ export default function App() {
 
           {/* ---------- DASHBOARD (Protected) ---------- */}
           <Route element={<DashboardLayout />}>
-
             {/* Patient */}
             <Route path="/dashboard" element={<PatientDashboard />} />
             <Route path="/appointments" element={<PatientAppointments />} />
 
             {/* Doctor */}
             <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+            <Route path="/doctor/schedule" element={<DoctorSchedule />} /> {/* ✅ جديد */}
 
             {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />

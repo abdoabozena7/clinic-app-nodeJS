@@ -1,26 +1,20 @@
+// routes/doctorRoutes.js
 const express = require('express');
 const router = express.Router();
 const doctorController = require('../controllers/doctorController');
-const { verifyToken, requireRole } = require('../middleware/authMiddleware');
+const auth = require('../middleware/auth');
 
-// Get all doctors
+// Public doctor endpoints
 router.get('/', doctorController.getDoctors);
-
-// Get doctor by id
 router.get('/:id', doctorController.getDoctorById);
-
-// Get availability
 router.get('/:id/availability', doctorController.getDoctorAvailability);
 
-// Doctor dashboard: get appointments for doctor
-router.get('/:id/appointments', verifyToken, requireRole(['doctor','admin']), doctorController.getDoctorAppointments);
+// Protected – doctor or admin
+router.get('/:id/appointments', auth, doctorController.getDoctorAppointments);
 
-// Schedule management for doctors
-// Get schedules for a doctor (doctor can view their own schedule)
-router.get('/:id/schedules', verifyToken, requireRole(['doctor']), doctorController.getDoctorSchedules);
-// Add a new availability entry for a doctor
-router.post('/:id/schedules', verifyToken, requireRole(['doctor']), doctorController.addDoctorSchedule);
-// Delete a schedule entry
-router.delete('/schedules/:scheduleId', verifyToken, requireRole(['doctor']), doctorController.deleteDoctorSchedule);
+// Schedules – doctor/admin
+router.get('/:id/schedules', auth, doctorController.getDoctorSchedules);
+router.post('/:id/schedules', auth, doctorController.addDoctorSchedule);
+router.delete('/schedules/:scheduleId', auth, doctorController.deleteDoctorSchedule);
 
 module.exports = router;
