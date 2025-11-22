@@ -1,8 +1,62 @@
+html, body, #root {
+  background: #2bc0bf !important;
+  min-height: 100vh;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom global styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #2d8cff;
+  --secondary: #6c9eff;
+  --accent: #0ea5e9;
+  --background: #f9fafb;
+  --text-main: #1f2937;
+  --text-light: #6b7280;
+}
+
 body {
-  @apply min-h-screen font-sans;
+  @apply min-h-screen font-sans bg-[var(--background)] text-[var(--text-main)];
+  font-family: "Inter", "Cairo", sans-serif;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.card {
+  @apply bg-white shadow-md rounded-xl p-5 transition hover:shadow-lg;
+}
+
+.btn-primary {
+  @apply bg-[var(--primary)] text-white px-4 py-2 rounded-lg hover:bg-[var(--accent)] transition;
 }

@@ -3,6 +3,16 @@ import { Link } from 'react-router-dom';
 import api from '../api';
 import { motion } from 'framer-motion';
 
+// ثابت: صور دكاترة رجالة
+const doctorImages = [
+  "https://randomuser.me/api/portraits/men/11.jpg",
+  "https://randomuser.me/api/portraits/men/32.jpg",
+  "https://randomuser.me/api/portraits/men/45.jpg",
+  "https://randomuser.me/api/portraits/men/52.jpg",
+  "https://randomuser.me/api/portraits/men/66.jpg",
+  "https://randomuser.me/api/portraits/men/73.jpg",
+];
+
 export default function DoctorsList() {
   const [doctors, setDoctors] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -17,6 +27,7 @@ export default function DoctorsList() {
         const res = await api.get('/doctors');
         setDoctors(res.data);
         setFiltered(res.data);
+
         const specs = Array.from(new Set(res.data.map((d) => d.specialty)));
         setSpecialties(specs);
       } catch (err) {
@@ -28,9 +39,11 @@ export default function DoctorsList() {
 
   useEffect(() => {
     let result = doctors;
+
     if (selectedSpecialty) {
       result = result.filter((doc) => doc.specialty === selectedSpecialty);
     }
+
     if (selectedPrice) {
       const [min, max] = selectedPrice.split('-').map(Number);
       result = result.filter((doc) => {
@@ -38,16 +51,19 @@ export default function DoctorsList() {
         return price >= min && price <= max;
       });
     }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter((doc) => doc.name.toLowerCase().includes(term));
     }
+
     setFiltered(result);
   }, [selectedSpecialty, selectedPrice, searchTerm, doctors]);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Find a Doctor</h1>
+
       {/* Filters */}
       <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 mb-4">
         <div>
@@ -65,6 +81,7 @@ export default function DoctorsList() {
             ))}
           </select>
         </div>
+
         <div>
           <label className="mr-2">Price range:</label>
           <select
@@ -79,6 +96,7 @@ export default function DoctorsList() {
             <option value="300-1000">300+</option>
           </select>
         </div>
+
         <div className="flex-1">
           <input
             type="text"
@@ -89,41 +107,42 @@ export default function DoctorsList() {
           />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {/* Doctors List */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.map((doc) => (
           <motion.div
             key={doc.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+            className="bg-white rounded-2xl shadow-md p-6 text-center hover:shadow-xl transition-shadow flex flex-col items-center"
           >
-            <div className="p-4">
-              <img
-                src={doc.imageUrl || 'personal.jpg'}
-                alt={doc.name}
-                className="w-full h-32 object-cover rounded-md mb-2"
-              />
-              <h2 className="text-xl font-semibold mb-1">{doc.name}</h2>
-              <p className="text-sm text-gray-600 mb-1">{doc.specialty}</p>
-              <p className="text-sm text-gray-600 mb-1">Location: {doc.location || 'N/A'}</p>
-              <p className="text-sm text-gray-600 mb-2">Consultation fee: ${doc.price || 'N/A'}</p>
-              <p className="text-sm mb-2">
-                {doc.availableToday ? (
-                  <span className="text-green-600 font-semibold">Available today</span>
-                ) : (
-                  <span className="text-gray-500">No slots today</span>
-                )}
-              </p>
-              <div className="flex justify-between items-center">
-                <Link
-                  to={`/doctor/${doc.id}`}
-                  className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-                >
-                  View Profile
-                </Link>
-              </div>
-            </div>
+            <img
+              src={doctorImages[doc.id % doctorImages.length]}
+              alt={doc.name}
+              className="w-32 h-32 object-cover rounded-full border-4 border-blue-500 shadow-md mb-4"
+            />
+
+            <h2 className="text-xl font-semibold mb-1">{doc.name}</h2>
+            <p className="text-sm text-gray-600 mb-1">{doc.specialty}</p>
+            <p className="text-sm text-gray-600 mb-1">Location: {doc.location || 'N/A'}</p>
+            <p className="text-sm text-gray-600 mb-2">Consultation fee: ${doc.price || 'N/A'}</p>
+
+            <p className="text-sm mb-4">
+              {doc.availableToday ? (
+                <span className="text-green-600 font-semibold">Available today</span>
+              ) : (
+                <span className="text-gray-500">No slots today</span>
+              )}
+            </p>
+
+            <Link
+              to={`/doctor/${doc.id}`}
+              className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors"
+            >
+              View Profile
+            </Link>
           </motion.div>
         ))}
       </div>

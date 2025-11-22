@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { Star } from 'lucide-react';
 
 export default function DoctorDetail() {
   const { id } = useParams();
@@ -17,28 +18,23 @@ export default function DoctorDetail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    async function fetchDoctor() {
+    async function loadDoctor() {
       try {
         const res = await api.get(`/doctors/${id}`);
         setDoctor(res.data);
-      } catch (err) {
-        console.error(err);
-      }
+      } catch {}
     }
-    fetchDoctor();
+    loadDoctor();
   }, [id]);
 
   useEffect(() => {
-    async function fetchAvailability() {
+    async function loadAvailability() {
       try {
-        if (!date) return;
         const res = await api.get(`/doctors/${id}/availability`, { params: { date } });
         setTimes(res.data);
-      } catch (err) {
-        console.error(err);
-      }
+      } catch {}
     }
-    fetchAvailability();
+    if (date) loadAvailability();
   }, [id, date]);
 
   const handleBooking = async () => {
@@ -49,56 +45,73 @@ export default function DoctorDetail() {
       return;
     }
     try {
-      const res = await api.post('/appointments', {
+      await api.post('/appointments', {
         doctorId: id,
         date,
         time: selectedTime,
         reason,
       });
       setMessage('Appointment booked successfully!');
-      // Redirect to dashboard after a delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      console.error(err);
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('An error occurred while booking.');
-      }
+      if (err.response?.data?.message) setError(err.response.data.message);
+      else setError('An error occurred while booking.');
     }
   };
 
+  if (!doctor) return <p className="pt-20">Loading...</p>;
+
   return (
-    <div>
-      {doctor ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <h1 className="text-2xl font-bold mb-2">{doctor.name}</h1>
-          <p className="text-gray-600 mb-1">{doctor.specialty}</p>
-          <p className="mb-4">{doctor.bio}</p>
-          <div className="mb-4">
-            <label htmlFor="date" className="block mb-1 font-medium">
-              Select a date
-            </label>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="max-w-4xl mx-auto pt-24 pb-16 px-6"
+    >
+      <div className="bg-white rounded-2xl shadow-large p-8 flex flex-col md:flex-row gap-10">
+        <div className="flex flex-col items-center md:w-1/3">
+          <img
+            src={doctor.image || 'https://via.placeholder.com/200'}
+            alt={doctor.name}
+            className="w-40 h-40 rounded-full object-cover shadow-medium mb-4"
+          />
+          <h1 className="text-2xl font-bold text-dark">{doctor.name}</h1>
+          <p className="text-text-light text-sm mt-1">{doctor.specialty}</p>
+
+          <div className="flex items-center gap-1 mt-3">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Star
+                key={s}
+                size={20}
+                className={s <= (doctor.rating || 4) ? 'text-yellow-400' : 'text-gray-300'}
+                fill={s <= (doctor.rating || 4) ? 'currentColor' : 'none'}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-6">
+          <p className="text-dark leading-relaxed">{doctor.bio}</p>
+
+          <div>
+            <label className="font-medium">Choose Date</label>
             <input
-              id="date"
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="border p-2 rounded"
               min={new Date().toISOString().split('T')[0]}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-2 w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-primary"
             />
           </div>
+
           {times.length > 0 && (
-            <div className="mb-4">
-              <label className="block mb-1 font-medium">Select a time</label>
+            <div>
+              <label className="font-medium">Available Times</label>
               <select
                 value={selectedTime}
                 onChange={(e) => setSelectedTime(e.target.value)}
-                className="border p-2 rounded"
+                className="mt-2 w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-primary"
               >
-                <option value="">-- Select time --</option>
+                <option value="">Select a time</option>
                 {times.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -107,32 +120,33 @@ export default function DoctorDetail() {
               </select>
             </div>
           )}
+
           {selectedTime && (
-            <div className="mb-4">
-              <label className="block mb-1 font-medium">Reason (optional)</label>
+            <div>
+              <label className="font-medium">Reason</label>
               <input
                 type="text"
+                placeholder="Describe your reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="border p-2 rounded w-full"
-                placeholder="Describe your reason for visit"
+                className="mt-2 w-full border rounded-lg px-3 py-2"
               />
             </div>
           )}
-          {error && <p className="text-red-500 mb-2">{error}</p>}
-          {message && <p className="text-green-600 mb-2">{message}</p>}
+
+          {error && <p className="text-red-500">{error}</p>}
+          {message && <p className="text-green-600">{message}</p>}
+
           {selectedTime && (
             <button
               onClick={handleBooking}
-              className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors"
+              className="w-full mt-4 bg-primary text-white py-3 rounded-lg hover:bg-accent transition"
             >
               Book Appointment
             </button>
           )}
-        </motion.div>
-      ) : (
-        <p>Loading...</p>
-      )}
-    </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }

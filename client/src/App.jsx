@@ -1,166 +1,71 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import DoctorsList from './pages/DoctorsList';
-/*
- * Lazy‑load some of the more complex pages.  This helps keep the initial
- * bundle smaller and defers loading until the user actually navigates to
- * these routes.  React.lazy dynamically imports the component and
- * Suspense will fallback to a loader while the module is being fetched.
- */
-import { lazy, Suspense } from 'react';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 
-// Lazy loaded pages – these files will be generated in this refactor
-const DoctorProfile = lazy(() => import('./pages/DoctorProfile'));
-const BookingConfirm = lazy(() => import('./pages/BookingConfirm'));
-const UserProfile = lazy(() => import('./pages/UserProfile'));
-const DoctorSchedule = lazy(() => import('./pages/DoctorSchedule'));
-const AdminDoctors = lazy(() => import('./pages/AdminDoctors'));
-const AdminAppointments = lazy(() => import('./pages/AdminAppointments'));
-const Notifications = lazy(() => import('./pages/Notifications'));
-import Login from './pages/Login';
-import Register from './pages/Register';
-import DoctorDetail from './pages/DoctorDetail';
-import PatientDashboard from './pages/PatientDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import DoctorDashboard from './pages/DoctorDashboard';
-import NotFound from './pages/NotFound';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import AdminPatients from './pages/AdminPatients';
-import AdminAnalytics from './pages/AdminAnalytics';
+import PublicLayout from "./layouts/PublicLayout";
+import DashboardLayout from "./layouts/DashboardLayout";
 
-// ProtectedRoute component
-const ProtectedRoute = ({ roles, children }) => {
-  const { user } = useAuth();
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
-};
+import Home from "./pages/Home";
+import DoctorsList from "./pages/DoctorsList";
+import DoctorProfile from "./pages/DoctorProfile";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
+import PatientDashboard from "./pages/PatientDashboard";
+import PatientAppointments from "./pages/PatientAppointments";
+import DoctorDashboard from "./pages/DoctorDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+
+import AdminDoctors from "./pages/AdminDoctors";
+import AdminAppointments from "./pages/AdminAppointments";
+import AdminPatients from "./pages/AdminPatients";
+import AdminAnalytics from "./pages/AdminAnalytics";
+
+import Notifications from "./pages/Notifications";
+import BookingConfirm from "./pages/BookingConfirm";   
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <Navbar />
-        {/*
-         * Wrap routes in Suspense so lazy‑loaded pages display a fallback while loading.
-         */}
-        <Suspense fallback={<div>Loading...</div>}>
-          <div className="container mx-auto px-4 py-6">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+        <Routes>
 
-              {/* Public doctor list and detail */}
-              <Route path="/doctors" element={<DoctorsList />} />
-              <Route path="/doctor/:id" element={<DoctorProfile />} />
-              <Route path="/booking/confirm" element={<BookingConfirm />} />
+          {/* ---------- PUBLIC PAGES ---------- */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/doctors" element={<DoctorsList />} />
 
-              {/* Protected routes for patients */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute roles={["patient"]}>
-                    <PatientDashboard />
-                  </ProtectedRoute>
-                }
-              />
+            {/* مهم جداً يكونوا هنا مش في Dashboard */}
+            <Route path="/doctor/:id" element={<DoctorProfile />} />
+            <Route path="/confirm" element={<BookingConfirm />} />
 
-              {/* Shared profile page for any logged in user */}
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute roles={["patient", "doctor", "admin"]}>
-                    <UserProfile />
-                  </ProtectedRoute>
-                }
-              />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
 
-              {/* Doctor schedule management */}
-              <Route
-                path="/schedule"
-                element={
-                  <ProtectedRoute roles={["doctor"]}>
-                    <DoctorSchedule />
-                  </ProtectedRoute>
-                }
-              />
+          {/* ---------- DASHBOARD (Protected) ---------- */}
+          <Route element={<DashboardLayout />}>
+            
+            {/* Patient */}
+            <Route path="/dashboard" element={<PatientDashboard />} />
+            <Route path="/appointments" element={<PatientAppointments />} />
 
-              {/* Admin dashboards */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/doctors"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <AdminDoctors />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/appointments"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <AdminAppointments />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/patients"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <AdminPatients />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/analytics"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <AdminAnalytics />
-                  </ProtectedRoute>
-                }
-              />
+            {/* Doctor */}
+            <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
 
-              {/* Doctor dashboard (view their appointments) */}
-              <Route
-                path="/doctor"
-                element={
-                  <ProtectedRoute roles={["doctor"]}>
-                    <DoctorDashboard />
-                  </ProtectedRoute>
-                }
-              />
+            {/* Admin */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/doctors" element={<AdminDoctors />} />
+            <Route path="/admin/patients" element={<AdminPatients />} />
+            <Route path="/admin/appointments" element={<AdminAppointments />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
 
-              {/* Notifications for all roles */}
-              <Route
-                path="/notifications"
-                element={
-                  <ProtectedRoute roles={["patient", "doctor", "admin"]}>
-                    <Notifications />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
-        </Suspense>
+            {/* Notifications */}
+            <Route path="/notifications" element={<Notifications />} />
+          </Route>
+
+        </Routes>
       </Router>
     </AuthProvider>
   );
