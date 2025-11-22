@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../api';
-import { motion } from 'framer-motion';
+// src/pages/Home.jsx
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import api from "../api";
+import { motion } from "framer-motion";
 
-// ⭐ نفس صور الدكاترة اللي بتستخدميها في DoctorsList
+// Same images as DoctorsList / DoctorProfile
 const doctorImages = [
   "https://randomuser.me/api/portraits/men/11.jpg",
   "https://randomuser.me/api/portraits/men/32.jpg",
-  "https://randomuser.me/api/portraits/men/45.jpg",
+  "https://randomuser.me/api/portraits/men/40.jpg",
   "https://randomuser.me/api/portraits/men/52.jpg",
   "https://randomuser.me/api/portraits/men/66.jpg",
   "https://randomuser.me/api/portraits/men/73.jpg",
@@ -20,11 +21,9 @@ export default function Home() {
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await api.get('/doctors');
+        const res = await api.get("/doctors");
         const specs = Array.from(new Set(res.data.map((d) => d.specialty)));
         setSpecialties(specs);
-
-        // ⭐ عرض أول 3 دكاترة فقط
         setDoctors(res.data.slice(0, 3));
       } catch (error) {
         console.log(error);
@@ -34,14 +33,14 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="space-y-16 pt-20">
+    <div className="space-y-16 pt-4">
 
-      {/* 🌟 Hero Section */}
-      <section className="w-full bg-transparent text-white text-center py-20">
+      {/* HERO */}
+      <section className="w-full text-white text-center py-16">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-bold mb-4 drop-shadow-lg"
+          className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg"
         >
           Your Health, Our Priority
         </motion.h1>
@@ -69,7 +68,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* 🌟 Specialties Section */}
+      {/* SPECIALTIES */}
       <section className="text-center">
         <h2 className="text-3xl font-bold text-white mb-6 drop-shadow">
           Specialties
@@ -79,7 +78,7 @@ export default function Home() {
           {specialties.map((spec) => (
             <div
               key={spec}
-              className="px-5 py-3 bg-white/30 backdrop-blur-sm text-white rounded-xl shadow-soft hover:shadow-md transition font-medium"
+              className="px-5 py-3 bg-white/30 backdrop-blur-sm text-white rounded-xl shadow hover:shadow-md transition font-medium"
             >
               {spec}
             </div>
@@ -87,7 +86,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🌟 Top Doctors Section */}
+      {/* TOP DOCTORS */}
       <section className="text-center">
         <h2 className="text-3xl font-bold text-white mb-8 drop-shadow">
           Top Doctors
@@ -99,18 +98,14 @@ export default function Home() {
               key={doc.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition"
+              className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition"
             >
-              {/* ⭐ صورة الدكتور من نفس المصفوفة */}
               <img
                 src={doctorImages[doc.id % doctorImages.length]}
                 alt={doc.name}
-                className="w-28 h-28 mx-auto rounded-full object-cover mb-4 border-4 border-blue-500 shadow"
+                className="w-28 h-28 mx-auto rounded-full object-cover mb-4 border-4 border-blue-500"
               />
-
-              <h3 className="text-xl font-semibold text-gray-800">
-                {doc.name}
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-800">{doc.name}</h3>
               <p className="text-sm text-gray-600 mb-3">{doc.specialty}</p>
 
               <Link
@@ -124,7 +119,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🌟 Final CTA */}
+      {/* FINAL CTA */}
       <section className="text-center pb-10">
         <p className="text-lg text-white mb-4 drop-shadow">
           Start your health journey today.

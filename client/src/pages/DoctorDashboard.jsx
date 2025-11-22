@@ -44,11 +44,11 @@ export default function DoctorDashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-10"
       >
-        <h1 className="text-3xl font-bold text-white drop-shadow-lg flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-black drop-shadow-lg flex items-center gap-3">
           <Stethoscope size={32} />
           Welcome, Doctor
         </h1>
-        <p className="text-white/80 mt-1">
+        <p className="text-black/80 mt-1">
           Here are your upcoming appointments.
         </p>
       </motion.div>

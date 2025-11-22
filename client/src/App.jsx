@@ -23,7 +23,12 @@ import AdminPatients from "./pages/AdminPatients";
 import AdminAnalytics from "./pages/AdminAnalytics";
 
 import Notifications from "./pages/Notifications";
-import BookingConfirm from "./pages/BookingConfirm";   
+import BookingConfirm from "./pages/BookingConfirm";
+
+// ⭐ صفحات التعديل الجديدة
+import AdminDoctorEdit from "./pages/AdminDoctorEdit";
+import AdminPatientEdit from "./pages/AdminPatientEdit";
+import UserProfile from "./pages/UserProfile";
 
 export default function App() {
   return (
@@ -46,7 +51,7 @@ export default function App() {
 
           {/* ---------- DASHBOARD (Protected) ---------- */}
           <Route element={<DashboardLayout />}>
-            
+
             {/* Patient */}
             <Route path="/dashboard" element={<PatientDashboard />} />
             <Route path="/appointments" element={<PatientAppointments />} />
@@ -57,12 +62,15 @@ export default function App() {
             {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/doctors" element={<AdminDoctors />} />
+            <Route path="/admin/doctors/:id/edit" element={<AdminDoctorEdit />} />
             <Route path="/admin/patients" element={<AdminPatients />} />
+            <Route path="/admin/patients/:id/edit" element={<AdminPatientEdit />} />
             <Route path="/admin/appointments" element={<AdminAppointments />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
 
             {/* Notifications */}
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/profile" element={<UserProfile />} />
           </Route>
 
         </Routes>

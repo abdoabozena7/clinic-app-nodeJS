@@ -16,7 +16,7 @@ export default function DoctorSidebar() {
   );
 
   return (
-    <aside className="w-64 bg-primary text-white p-6 space-y-4 min-h-screen">
+    <aside className="w-64 bg-primary text-black p-6 space-y-4 min-h-screen">
       <h2 className="text-xl font-bold mb-6">Doctor</h2>
       {link("/doctor-dashboard", "Dashboard", Home)}
       {link("/doctor/schedule", "Schedule", Calendar)}

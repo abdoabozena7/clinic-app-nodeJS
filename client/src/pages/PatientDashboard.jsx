@@ -73,11 +73,11 @@ export default function PatientDashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-10"
       >
-        <h1 className="text-3xl font-bold text-white drop-shadow flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-black drop-shadow flex items-center gap-3">
           <HeartPulse size={28} />
           My Appointments
         </h1>
-        <p className="text-white/80 mt-1">
+        <p className="text-black/80 mt-1">
           Manage your upcoming and past appointments.
         </p>
       </motion.div>
@@ -88,7 +88,7 @@ export default function PatientDashboard() {
 
       {/* No appointments */}
       {appointments.length === 0 && (
-        <p className="text-white/80 bg-white/20 backdrop-blur p-4 rounded-xl inline-block mt-6">
+        <p className="text-black/80 bg-white/20 backdrop-blur p-4 rounded-xl inline-block mt-6">
           You have no appointments.
         </p>
       )}

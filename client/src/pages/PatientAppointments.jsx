@@ -21,11 +21,11 @@ export default function PatientAppointments() {
   return (
     <div className="p-6">
 
-      <h1 className="text-3xl font-bold text-white mb-6">My Appointments</h1>
+      <h1 className="text-3xl font-bold text-black mb-6">My Appointments</h1>
 
       {/* No appointments */}
       {appointments.length === 0 && (
-        <p className="text-white bg-white/20 p-4 rounded-xl inline-block backdrop-blur-md">
+        <p className="text-white bg-black/20 p-4 rounded-xl inline-block backdrop-blur-md">
           You have no appointments yet.
         </p>
       )}

@@ -16,7 +16,7 @@ export default function PatientSidebar() {
   );
 
   return (
-    <aside className="w-64 bg-primary text-white p-6 space-y-4 min-h-screen">
+    <aside className="w-64 bg-primary text-black p-6 space-y-4 min-h-screen">
       <h2 className="text-xl font-bold mb-6">Patient</h2>
       {link("/dashboard", "Dashboard", Home)}
       {link("/appointments", "My Appointments", Calendar)}
