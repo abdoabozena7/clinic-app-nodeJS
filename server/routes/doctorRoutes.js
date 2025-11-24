@@ -2,19 +2,40 @@
 const express = require('express');
 const router = express.Router();
 const doctorController = require('../controllers/doctorController');
-const auth = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 
-// Public doctor endpoints
+// ---------- Public doctor endpoints ----------
 router.get('/', doctorController.getDoctors);
 router.get('/:id', doctorController.getDoctorById);
 router.get('/:id/availability', doctorController.getDoctorAvailability);
 
-// Protected – doctor or admin
-router.get('/:id/appointments', auth, doctorController.getDoctorAppointments);
+// ---------- Protected (doctor OR admin) ----------
+router.get(
+  '/:id/appointments',
+  verifyToken,
+  requireRole(['doctor', 'admin']),
+  doctorController.getDoctorAppointments
+);
 
-// Schedules – doctor/admin
-router.get('/:id/schedules', auth, doctorController.getDoctorSchedules);
-router.post('/:id/schedules', auth, doctorController.addDoctorSchedule);
-router.delete('/schedules/:scheduleId', auth, doctorController.deleteDoctorSchedule);
+router.get(
+  '/:id/schedules',
+  verifyToken,
+  requireRole(['doctor', 'admin']),
+  doctorController.getDoctorSchedules
+);
+
+router.post(
+  '/:id/schedules',
+  verifyToken,
+  requireRole(['doctor', 'admin']),
+  doctorController.addDoctorSchedule
+);
+
+router.delete(
+  '/schedules/:scheduleId',
+  verifyToken,
+  requireRole(['doctor', 'admin']),
+  doctorController.deleteDoctorSchedule
+);
 
 module.exports = router;

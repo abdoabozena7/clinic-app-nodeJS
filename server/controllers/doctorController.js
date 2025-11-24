@@ -1,5 +1,13 @@
 const { Doctor, User, Schedule, Appointment } = require('../models');
 const moment = require('moment');
+const { Op } = require('sequelize');
+
+// Helper: find doctor row linked to logged-in doctor user
+async function getDoctorFromUser(user) {
+  if (!user || user.role !== 'doctor') return null;
+  const doctor = await Doctor.findOne({ where: { userId: user.id } });
+  return doctor;
+}
 
 // Get all doctors with their user data
 exports.getDoctors = async (req, res) => {
@@ -12,13 +20,17 @@ exports.getDoctors = async (req, res) => {
         },
       ],
     });
-    // For each doctor compute availability today (if schedule exists for today)
+
     const today = new Date();
     const dayOfWeek = today.getDay();
+
     const formatted = [];
     for (const doc of doctors) {
-      const schedules = await Schedule.findAll({ where: { doctorId: doc.id, dayOfWeek, isBlocked: false } });
+      const schedules = await Schedule.findAll({
+        where: { doctorId: doc.id, dayOfWeek, isBlocked: false },
+      });
       const availableToday = schedules.length > 0;
+
       formatted.push({
         id: doc.id,
         name: doc.User.name,
@@ -32,6 +44,7 @@ exports.getDoctors = async (req, res) => {
         availableToday,
       });
     }
+
     return res.json(formatted);
   } catch (error) {
     console.error(error);
@@ -51,7 +64,11 @@ exports.getDoctorById = async (req, res) => {
         },
       ],
     });
-    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
     const result = {
       id: doctor.id,
       name: doctor.User.name,
@@ -63,6 +80,7 @@ exports.getDoctorById = async (req, res) => {
       location: doctor.location,
       price: doctor.price,
     };
+
     return res.json(result);
   } catch (error) {
     console.error(error);
@@ -75,24 +93,38 @@ exports.getDoctorAvailability = async (req, res) => {
   try {
     const { id } = req.params;
     const { date } = req.query; // Expect YYYY-MM-DD
-    if (!date) return res.status(400).json({ message: 'Date query parameter is required (YYYY-MM-DD).' });
+
+    if (!date) {
+      return res
+        .status(400)
+        .json({ message: 'Date query parameter is required (YYYY-MM-DD).' });
+    }
+
     const day = moment(date, 'YYYY-MM-DD');
     if (!day.isValid()) {
       return res.status(400).json({ message: 'Invalid date format.' });
     }
+
     const dayOfWeek = day.day();
-    const schedules = await Schedule.findAll({ where: { doctorId: id, dayOfWeek } });
+    const schedules = await Schedule.findAll({
+      where: { doctorId: id, dayOfWeek },
+    });
+
     if (!schedules || schedules.length === 0) {
       return res.json([]);
     }
+
     let availableSlots = [];
     for (const sched of schedules) {
-      // Skip blocked schedules
       if (sched.isBlocked) continue;
-      // parse times
-      const start = moment(`${date} ${sched.startTime}`, 'YYYY-MM-DD HH:mm:ss');
+
+      const start = moment(
+        `${date} ${sched.startTime}`,
+        'YYYY-MM-DD HH:mm:ss'
+      );
       const end = moment(`${date} ${sched.endTime}`, 'YYYY-MM-DD HH:mm:ss');
       let current = start.clone();
+
       while (current.isBefore(end)) {
         const slotStart = current.clone();
         const slotEnd = current.clone().add(1, 'hour'); // 1-hour slot
@@ -101,28 +133,32 @@ exports.getDoctorAvailability = async (req, res) => {
         current = current.add(1, 'hour');
       }
     }
-    // Remove slots that are already booked or overlapping
+
     const appointments = await Appointment.findAll({
       where: {
         doctorId: id,
         startTime: {
-          [require('sequelize').Op.gte]: day.startOf('day').toDate(),
+          [Op.gte]: day.startOf('day').toDate(),
         },
         endTime: {
-          [require('sequelize').Op.lte]: day.endOf('day').toDate(),
+          [Op.lte]: day.endOf('day').toDate(),
         },
         status: 'scheduled',
       },
     });
+
     const freeSlots = availableSlots.filter((slot) => {
       const overlapped = appointments.some((appt) => {
         const apptStart = moment(appt.startTime);
         const apptEnd = moment(appt.endTime);
-        return slot.start.isSame(apptStart) || slot.start.isBetween(apptStart, apptEnd, null, '[)');
+        return (
+          slot.start.isSame(apptStart) ||
+          slot.start.isBetween(apptStart, apptEnd, null, '[)')
+        );
       });
       return !overlapped;
     });
-    // Return only start times as HH:mm
+
     const response = freeSlots.map((slot) => slot.start.format('HH:mm'));
     return res.json(response);
   } catch (error) {
@@ -135,15 +171,7 @@ exports.getDoctorAvailability = async (req, res) => {
 exports.getDoctorAppointments = async (req, res) => {
   try {
     const { id } = req.params;
-    // Optionally ensure the requesting doctor matches the id
-    // For simplicity, allow only if the logged-in user is doctor role or admin
-    const { user } = req;
-    if (user.role === 'doctor') {
-      // Retrieve the doctor's profile for this user
-      // Ensure doctor owns this id
-      // Could enforce by checking user's doctor.id
-      // But we skip for brevity
-    }
+
     const appointments = await Appointment.findAll({
       where: { doctorId: id },
       include: [
@@ -154,6 +182,7 @@ exports.getDoctorAppointments = async (req, res) => {
       ],
       order: [['startTime', 'ASC']],
     });
+
     const result = appointments.map((appt) => ({
       id: appt.id,
       patientName: appt.User?.name || '',
@@ -162,6 +191,7 @@ exports.getDoctorAppointments = async (req, res) => {
       status: appt.status,
       reason: appt.reason,
     }));
+
     return res.json(result);
   } catch (error) {
     console.error(error);
@@ -172,13 +202,26 @@ exports.getDoctorAppointments = async (req, res) => {
 // Get schedules for a specific doctor
 exports.getDoctorSchedules = async (req, res) => {
   try {
-    const { id } = req.params;
-    // Ensure requesting doctor is only accessing their own schedules unless admin
     const { user } = req;
-    if (user.role === 'doctor' && user.id !== parseInt(id, 10)) {
-      return res.status(403).json({ message: 'Forbidden' });
+    let doctorId = req.params.id;
+
+    // If logged-in user is a doctor → override doctorId based on userId
+    if (user && user.role === 'doctor') {
+      const doctor = await getDoctorFromUser(user);
+      if (!doctor) {
+        return res.status(404).json({ message: 'Doctor profile not found.' });
+      }
+      doctorId = doctor.id;
     }
-    const schedules = await Schedule.findAll({ where: { doctorId: id }, order: [['dayOfWeek', 'ASC'], ['startTime', 'ASC']] });
+
+    const schedules = await Schedule.findAll({
+      where: { doctorId },
+      order: [
+        ['dayOfWeek', 'ASC'],
+        ['startTime', 'ASC'],
+      ],
+    });
+
     return res.json(schedules);
   } catch (error) {
     console.error(error);
@@ -186,21 +229,40 @@ exports.getDoctorSchedules = async (req, res) => {
   }
 };
 
-// Add a schedule entry for a doctor.  The request must include dayOfWeek (0–6), startTime, endTime.
+// Add a schedule entry for a doctor. The request must include dayOfWeek (0–6), startTime, endTime.
 exports.addDoctorSchedule = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { dayOfWeek, startTime, endTime, isBlocked } = req.body;
-    // Validate inputs
-    if (dayOfWeek === undefined || !startTime || !endTime) {
-      return res.status(400).json({ message: 'dayOfWeek, startTime and endTime are required.' });
-    }
-    // Ensure user is doctor and matches id or is admin
     const { user } = req;
-    if (user.role === 'doctor' && user.id !== parseInt(id, 10)) {
-      return res.status(403).json({ message: 'Forbidden' });
+    let doctorId = req.params.id;
+    const { dayOfWeek, startTime, endTime, isBlocked } = req.body;
+
+    if (
+      dayOfWeek === undefined ||
+      dayOfWeek === null ||
+      !startTime ||
+      !endTime
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'dayOfWeek, startTime and endTime are required.' });
     }
-    const schedule = await Schedule.create({ doctorId: id, dayOfWeek, startTime, endTime, isBlocked: !!isBlocked });
+
+    if (user && user.role === 'doctor') {
+      const doctor = await getDoctorFromUser(user);
+      if (!doctor) {
+        return res.status(404).json({ message: 'Doctor profile not found.' });
+      }
+      doctorId = doctor.id;
+    }
+
+    const schedule = await Schedule.create({
+      doctorId,
+      dayOfWeek,
+      startTime,
+      endTime,
+      isBlocked: !!isBlocked,
+    });
+
     return res.status(201).json(schedule);
   } catch (error) {
     console.error(error);
@@ -208,17 +270,24 @@ exports.addDoctorSchedule = async (req, res) => {
   }
 };
 
-// Delete a schedule entry.  Doctors can only delete their own schedules.
+// Delete a schedule entry. Doctors can only delete their own schedules.
 exports.deleteDoctorSchedule = async (req, res) => {
   try {
     const { scheduleId } = req.params;
     const { user } = req;
+
     const schedule = await Schedule.findByPk(scheduleId);
-    if (!schedule) return res.status(404).json({ message: 'Schedule not found.' });
-    // If doctor, ensure ownership
-    if (user.role === 'doctor' && schedule.doctorId !== user.id) {
-      return res.status(403).json({ message: 'Forbidden' });
+    if (!schedule) {
+      return res.status(404).json({ message: 'Schedule not found.' });
     }
+
+    if (user && user.role === 'doctor') {
+      const doctor = await getDoctorFromUser(user);
+      if (!doctor || schedule.doctorId !== doctor.id) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+    }
+
     await schedule.destroy();
     return res.json({ message: 'Schedule deleted.' });
   } catch (error) {
