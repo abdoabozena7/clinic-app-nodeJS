@@ -27,6 +27,7 @@ export default function DoctorProfile() {
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Load doctor info
   useEffect(() => {
@@ -58,9 +59,10 @@ export default function DoctorProfile() {
     fetchTimes();
   }, [id, date]);
 
-  // BOOKING BUTTON
+  // Normal booking → goes to /confirm
   const handleBook = () => {
     setError("");
+    setSuccess("");
 
     if (!user) return navigate("/register");
 
@@ -80,7 +82,48 @@ export default function DoctorProfile() {
     });
   };
 
-  if (!doctor) return <p className="pt-24 text-center text-gray-500">Loading doctor...</p>;
+  // 🔥 Emergency request button
+  const handleEmergency = async () => {
+    setError("");
+    setSuccess("");
+
+    if (!user) {
+      setError(
+        "You must be logged in as a patient to request an emergency appointment."
+      );
+      return;
+    }
+
+    if (!time) {
+      setError("Please select a time for the emergency request.");
+      return;
+    }
+
+    try {
+      const timeWithSeconds = time.length === 5 ? `${time}:00` : time;
+      await api.post("/emergency", {
+        doctorId: parseInt(id, 10),
+        date,
+        time: timeWithSeconds,
+        reason,
+      });
+
+      setSuccess(
+        "Emergency request submitted. You will be notified once the doctor and admin respond."
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.message ||
+          "Error submitting emergency request."
+      );
+    }
+  };
+
+  if (!doctor)
+    return (
+      <p className="pt-24 text-center text-gray-500">Loading doctor...</p>
+    );
 
   const imgSrc =
     doctorImages[doctor.id % doctorImages.length] || doctorImages[0];
@@ -152,24 +195,32 @@ export default function DoctorProfile() {
               />
             </div>
 
-            {/* Time */}
+            {/* Time as buttons */}
             {times.length > 0 ? (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <label className="font-medium text-sm text-slate-800 block">
                   Select a time
                 </label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full md:w-64 px-3 py-2 rounded-xl bg-white/90 text-slate-900 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 text-sm shadow-sm"
-                >
-                  <option value="">-- Select time --</option>
-                  {times.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap gap-2">
+                  {times.map((t) => {
+                    const isSelected = time === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTime(t)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium border shadow-sm transition 
+                          ${
+                            isSelected
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-indigo-300/60"
+                              : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
+                          }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <p className="text-slate-600 text-sm">
@@ -199,13 +250,31 @@ export default function DoctorProfile() {
               </p>
             )}
 
-            <button
-              onClick={handleBook}
-              disabled={!time}
-              className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm md:text-base font-semibold shadow-lg shadow-indigo-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-transform duration-150 hover:-translate-y-0.5"
-            >
-              Continue to Confirm
-            </button>
+            {success && (
+              <p className="text-sm text-emerald-600 bg-emerald-50/80 border border-emerald-100 rounded-xl px-4 py-2">
+                {success}
+              </p>
+            )}
+
+            {/* Buttons: normal + emergency */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+              <button
+                onClick={handleBook}
+                disabled={!time}
+                className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm md:text-base font-semibold shadow-lg shadow-indigo-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-transform duration-150 hover:-translate-y-0.5 w-full sm:w-auto"
+              >
+                Continue to Confirm
+              </button>
+
+              <button
+                type="button"
+                onClick={handleEmergency}
+                disabled={!time}
+                className="px-6 py-3 rounded-2xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-sm md:text-base font-semibold shadow-md shadow-red-200/60 disabled:opacity-50 disabled:cursor-not-allowed transition-transform duration-150 hover:-translate-y-0.5 w-full sm:w-auto"
+              >
+                Request Emergency
+              </button>
+            </div>
           </div>
         </div>
       </div>
