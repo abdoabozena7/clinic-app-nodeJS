@@ -15,9 +15,9 @@ import Register from "./pages/Register";
 import PatientDashboard from "./pages/PatientDashboard";
 import PatientAppointments from "./pages/PatientAppointments";
 import DoctorDashboard from "./pages/DoctorDashboard";
-import DoctorSchedule from "./pages/DoctorSchedule"; // ✅ جديد
-import AdminDashboard from "./pages/AdminDashboard";
+import DoctorSchedule from "./pages/DoctorSchedule";
 
+import AdminDashboard from "./pages/AdminDashboard";
 import AdminDoctors from "./pages/AdminDoctors";
 import AdminAppointments from "./pages/AdminAppointments";
 import AdminPatients from "./pages/AdminPatients";
@@ -26,23 +26,23 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import Notifications from "./pages/Notifications";
 import BookingConfirm from "./pages/BookingConfirm";
 
-// ⭐ صفحات التعديل الجديدة
 import AdminDoctorEdit from "./pages/AdminDoctorEdit";
 import AdminPatientEdit from "./pages/AdminPatientEdit";
 import UserProfile from "./pages/UserProfile";
+
+import WhiteLabelSimulator from "./pages/WhiteLabelSimulator";
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-
           {/* ---------- PUBLIC PAGES ---------- */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/doctors" element={<DoctorsList />} />
 
-            {/* مهم جداً يكونوا هنا مش في Dashboard */}
+            {/* important: keep these public */}
             <Route path="/doctor/:id" element={<DoctorProfile />} />
             <Route path="/confirm" element={<BookingConfirm />} />
 
@@ -58,7 +58,7 @@ export default function App() {
 
             {/* Doctor */}
             <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-            <Route path="/doctor/schedule" element={<DoctorSchedule />} /> {/* ✅ جديد */}
+            <Route path="/doctor/schedule" element={<DoctorSchedule />} />
 
             {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
@@ -69,11 +69,16 @@ export default function App() {
             <Route path="/admin/appointments" element={<AdminAppointments />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
 
-            {/* Notifications */}
+            {/* ✅ White-label simulator page */}
+            <Route
+              path="/admin/white-label-simulator"
+              element={<WhiteLabelSimulator />}
+            />
+
+            {/* Notifications + Profile */}
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<UserProfile />} />
           </Route>
-
         </Routes>
       </Router>
     </AuthProvider>
